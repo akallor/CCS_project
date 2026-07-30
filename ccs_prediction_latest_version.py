@@ -420,6 +420,28 @@ def main():
     print("Per charge:", per_ch_display)
     print(f"Results saved to {args.output_dir}")
 
+ plot_charge_stratified(preds, targets_test, charges_test, args.output_dir)
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+    ax[0].plot(history["train_loss"], label="Train")
+    ax[0].plot(history["val_loss"], label="Val")
+    ax[0].set_xlabel("Epoch")
+    ax[0].set_ylabel("Loss")
+    ax[0].legend()
+    ax[0].set_title("Loss (eval mode, comparable)")
+    ax[0].grid(True, alpha=0.3)
+    ax[1].plot(history["train_r2"], label="Train")
+    ax[1].plot(history["val_r2"], label="Val")
+    ax[1].set_xlabel("Epoch")
+    ax[1].set_ylabel("R²")
+    ax[1].legend()
+    ax[1].set_title("R² (eval mode, comparable)")
+    ax[1].grid(True, alpha=0.3)
+    plt.tight_layout()
+    _save_fig_multiformat(fig, os.path.join(args.output_dir, "unified_esm_training_curves"), dpi=300)
+    plt.close(fig)
+
+    print(f"Results saved to {args.output_dir}")
 
 if __name__ == "__main__":
     main()
