@@ -184,9 +184,87 @@ def _save_fig_multiformat(fig, basepath, dpi=300):
     for ext in ("png", "pdf", "svg"):
         fig.savefig(f"{basepath}.{ext}", dpi=dpi if ext == "png" else None, bbox_inches="tight")
 
+def plot_charge_stratified(
+    preds: np.ndarray,
+    targets: np.ndarray,
+    charges: np.ndarray,
+    output_dir: str,
+) -> None:
+    os.makedirs(output_dir, exist_ok=True)
+    from sklearn.metrics import r2_score
 
-# (plot_charge_stratified is unchanged from the pooled trainer - omitted here for brevity;
-#  paste your existing function back in, it needs no edits.)
+    ch_list = sorted(np.unique(charges))
+    ch_labels = [str(int(c) + 1) for c in ch_list]
+    residuals = preds - targets
+
+    # Combined plots (all charges)
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+    axes[0].scatter(targets, preds, alpha=0.6, s=20)
+    axes[0].plot([targets.min(), targets.max()], [targets.min(), targets.max()], "r--", lw=2)
+    axes[0].set_xlabel("Experimental CCS")
+    axes[0].set_ylabel("Predicted CCS")
+    axes[0].set_title(f"Predicted vs Experimental (R² = {r2_score(targets, preds):.4f})")
+    axes[0].grid(True, alpha=0.3)
+
+    for ch in ch_list:
+        mask = charges == ch
+        axes[1].scatter(preds[mask], residuals[mask], alpha=0.5, label=f"z={int(ch)+1}", s=15)
+    axes[1].axhline(0, color="k", linestyle="--", alpha=0.7)
+    axes[1].set_xlabel("Predicted CCS")
+    axes[1].set_ylabel("Residual")
+    axes[1].set_title("Residual by charge")
+    axes[1].legend()
+    axes[1].grid(True, alpha=0.3)
+
+    axes[2].hist(residuals, bins=50, edgecolor="black", alpha=0.7)
+    axes[2].set_xlabel("Residual")
+    axes[2].set_ylabel("Frequency")
+    axes[2].set_title("Residual distribution")
+    axes[2].grid(True, alpha=0.3)
+    plt.tight_layout()
+    _save_fig_multiformat(fig, os.path.join(output_dir, "unified_esm_evaluation_plots"), dpi=300)
+    plt.close(fig)
+
+    # Per-charge plots
+    for ch in ch_list:
+        mask = charges == ch
+        t_ch = targets[mask]
+        p_ch = preds[mask]
+        r_ch = p_ch - t_ch
+        z_label = int(ch) + 1
+        n_ch = mask.sum()
+
+        fig_ch, ax_ch = plt.subplots(1, 3, figsize=(14, 5))
+        fig_ch.suptitle(f"Unified ESM – Charge z={z_label} (n={n_ch})", fontsize=12, fontweight="bold")
+
+        ax_ch[0].scatter(t_ch, p_ch, alpha=0.6, s=20)
+        ax_ch[0].plot([t_ch.min(), t_ch.max()], [t_ch.min(), t_ch.max()], "r--", lw=2)
+        ax_ch[0].set_xlabel("Experimental CCS")
+        ax_ch[0].set_ylabel("Predicted CCS")
+        ax_ch[0].set_title(f"Experimental vs Predicted (R² = {r2_score(t_ch, p_ch):.4f})")
+        ax_ch[0].grid(True, alpha=0.3)
+
+        ax_ch[1].scatter(t_ch, r_ch, alpha=0.6, s=20)
+        ax_ch[1].axhline(0, color="k", linestyle="--", alpha=0.7)
+        ax_ch[1].set_xlabel("Experimental CCS")
+        ax_ch[1].set_ylabel("Residual")
+        ax_ch[1].set_title("Experimental vs Residual")
+        ax_ch[1].grid(True, alpha=0.3)
+
+        ax_ch[2].hist(r_ch, bins=min(50, max(10, len(r_ch) // 5)), edgecolor="black", alpha=0.7)
+        ax_ch[2].set_xlabel("Residual")
+        ax_ch[2].set_ylabel("Frequency")
+        ax_ch[2].set_title("Residual distribution")
+        ax_ch[2].grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        _save_fig_multiformat(
+            fig_ch,
+            os.path.join(output_dir, f"unified_esm_charge_z{z_label}_plots"),
+            dpi=300,
+        )
+        plt.close(fig_ch)
+
 
 
 # ---------------------------------------------------------------------------
